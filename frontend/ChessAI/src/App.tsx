@@ -1,36 +1,41 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import chessBoard from './assets/chess_board.png'
-import './App.css'
+import { useRef, useState } from "react";
+import { Chess } from "chess.js";
+import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
+import { customPieces } from "./customPieces";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const gameRef = useRef(new Chess());
+  const game = gameRef.current;
+  const [fen, setFen] = useState(game.fen());
+
+  function onPieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
+    if (!targetSquare) return false; // dropped outside the board
+
+    try {
+      game.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: "q",
+      });
+      setFen(game.fen());
+      return true;
+    } catch {
+      return false; // illegal move: piece snaps back
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={chessBoard} width="400" height="400" alt="chess board" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-      <section id="spacer"></section>
-    </>
-  )
+    <div style={{ width: "min(90vw, 560px)", margin: "2rem auto" }}>
+      <Chessboard
+        options={{
+          position: fen,
+          onPieceDrop,
+          pieces: customPieces,
+          boardOrientation: "white",
+          lightSquareStyle: { backgroundColor: "#f0d9b5" },
+          darkSquareStyle: { backgroundColor: "#b58863" },
+        }}
+      />
+    </div>
+  );
 }
-
-export default App
