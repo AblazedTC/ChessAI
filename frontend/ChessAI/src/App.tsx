@@ -3,7 +3,9 @@ import { Chess } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
 import { customPieces } from "./customPieces";
 
-const AI_DEPTH = 12; // 1-18: higher = stronger but slower
+var AI_DEPTH = 12; // 1-18: higher = stronger but slower
+
+type Difficulty = "Easy" | "Normal" | "Hard" | "GM";
 
 type EngineMove = {
   move: string;
@@ -27,6 +29,7 @@ export default function App() {
   const [fen, setFen] = useState(game.fen());
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>("Normal");
 
   async function playAiMove() {
     setThinking(true);
@@ -76,6 +79,27 @@ export default function App() {
     setError(null);
   }
 
+  function changeDifficulty() {
+    switch (difficulty) {
+      case "Easy":
+        setDifficulty("Normal");
+        AI_DEPTH = 6;
+        break;
+      case "Normal":
+        setDifficulty("Hard");
+        AI_DEPTH = 9;
+        break;
+      case "Hard":
+        setDifficulty("GM");
+        AI_DEPTH = 12;
+        break;
+      case "GM":
+        setDifficulty("Easy");
+        AI_DEPTH = 1;
+        break;
+    }
+  }
+
   const aiStuck = !thinking && game.turn() === "b" && !game.isGameOver();
 
   return (
@@ -97,6 +121,7 @@ export default function App() {
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
         <button onClick={newGame} disabled={thinking}>New game</button>
+        <button id={"difficulty-button"} onClick={changeDifficulty}>{difficulty}</button>
         {aiStuck && <button onClick={() => void playAiMove()}>Retry AI move</button>}
       </div>
     </div>
