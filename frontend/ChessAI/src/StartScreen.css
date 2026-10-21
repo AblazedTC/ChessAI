@@ -1,0 +1,75 @@
+.start {
+  --text: #f0d9b5;
+  --ink: #2b2118;
+  --walnut: #3b2f26;
+  --walnut-hover: #4d3e32;
+  --sand: #f0d9b5;
+  --line: #5a4a3c;
+  width: min(90vw, 440px);
+  margin: 3rem auto;
+  color: var(--text);
+}
+
+.start-title {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 2rem;
+}
+
+.start-section { margin-bottom: 1.5rem; }
+
+.start-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.start-note {
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0;
+  min-height: 1.2em;
+  opacity: 0.75;
+}
+
+.seg { display: grid; gap: 0.5rem; }
+.seg-2 { grid-template-columns: repeat(2, 1fr); }
+.seg-3 { grid-template-columns: repeat(3, 1fr); }
+.seg-4 { grid-template-columns: repeat(4, 1fr); }
+
+.seg button {
+  font: inherit;
+  padding: 0.7rem 0.5rem;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  background: var(--walnut);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.seg button:hover { background: var(--walnut-hover); border-color: var(--sand); }
+
+.seg button[aria-checked="true"] {
+  background: var(--sand);
+  border-color: var(--sand);
+  color: var(--ink);
+}
+
+.seg-color button { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
+.seg-color .glyph { font-size: 2rem; line-height: 1.1; }
+
+.start-go {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--sand);
+  color: var(--ink);
+  cursor: pointer;
+}
+.start-go:hover { background: #fff1d6; }
+
+.start button:focus-visible { outline: 3px solid #b58863; outline-offset: 2px; }
