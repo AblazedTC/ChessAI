@@ -3,6 +3,7 @@ import { Chess } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
 import { customPieces } from "./customPieces";
 import { DEPTH, type GameSettings } from "./types";
+import "./Game.css";
 
 type EngineMove = {
   move: string;
@@ -79,7 +80,6 @@ export default function Game({ settings, onExit }: Props) {
 
   function onPieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (!targetSquare || thinking || game.isGameOver()) return false;
-
     if (vsAi && game.turn() !== humanChar) return false;
 
     try {
@@ -124,10 +124,10 @@ export default function Game({ settings, onExit }: Props) {
 
       {error && <p style={{ color: "#c0392b", marginTop: "1rem" }}>⚠ {error}</p>}
 
-      <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
-        <button onClick={newGame} disabled={thinking}>New game</button>
-        <button onClick={onExit}>Main menu</button>
-        {aiStuck && <button onClick={() => void playAiMove()}>Retry AI move</button>}
+      <div className="game-actions">
+        <button className="game-btn" onClick={newGame} disabled={thinking}>New game</button>
+        <button className="game-btn" onClick={onExit}>Main menu</button>
+        {aiStuck && <button className="game-btn" onClick={() => void playAiMove()}>Retry AI move</button>}
       </div>
     </div>
   );
