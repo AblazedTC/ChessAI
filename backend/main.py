@@ -2,15 +2,33 @@ import os
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # Stockfish engine hosted by https://chess-api.com/
 CHESS_API_URL = os.getenv("CHESS_API_URL", "https://chess-api.com/v1")
 
+# Comma-separated list of browser origins allowed to call this API,
+# e.g. "https://chessai.vercel.app,http://localhost:5173"
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    if origin.strip()
+]
+
 app = FastAPI(
     title="ChessAI API",
     description="Backend API for ChessAI.",
     version="0.2.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    # Allow every Vercel preview deployment of the frontend as well
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 

@@ -1,0 +1,22 @@
+# Render Blueprint for the ChessAI FastAPI backend.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: chessai-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.9
+      - key: CHESS_API_URL
+        value: https://chess-api.com/v1
+      # Set this to your Vercel production URL after the first frontend deploy,
+      # e.g. https://chessai.vercel.app (comma-separate multiple origins).
+      - key: ALLOWED_ORIGINS
+        sync: false
