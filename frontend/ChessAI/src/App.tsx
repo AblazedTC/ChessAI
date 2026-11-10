@@ -5,6 +5,10 @@ import { customPieces } from "./customPieces";
 
 var AI_DEPTH = 12; // 1-18: higher = stronger but slower
 
+// Backend origin, e.g. "https://chessai-api.onrender.com". Empty in dev so
+// requests go to "/api/..." and are proxied by Vite to the local backend.
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 type Difficulty = "Easy" | "Normal" | "Hard" | "GM";
 
 type EngineMove = {
@@ -35,7 +39,7 @@ export default function App() {
     setThinking(true);
     setError(null);
     try {
-      const response = await fetch("/api/move", {
+      const response = await fetch(`${API_BASE_URL}/api/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fen: game.fen(), depth: AI_DEPTH }),
