@@ -27,6 +27,15 @@ The API runs at http://127.0.0.1:8000.
 - `/redoc`: alternative API documentation.
 - `/openapi.json`: OpenAPI schema.
 
+## Environment variables
+
+| Name              | Default                                          | Description                                              |
+| ----------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173`    | Comma-separated browser origins allowed by CORS          |
+| `CHESS_API_URL`   | `https://chess-api.com/v1`                       | Stockfish engine endpoint                                |
+
+See [DEPLOYMENT.md](../DEPLOYMENT.md) for deploying to Render.
+
 ## Tests
 
 ```powershell

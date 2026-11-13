@@ -5,6 +5,9 @@ Python
 
 FastAPI
 
+## Deployment
+Frontend on Vercel, backend on Render — see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ## Stockfish API
 https://chess-api.com/
 
