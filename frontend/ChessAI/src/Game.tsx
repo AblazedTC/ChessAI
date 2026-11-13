@@ -5,6 +5,8 @@ import { customPieces } from "./customPieces";
 import { DEPTH, type GameSettings } from "./types";
 import "./Game.css";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 type EngineMove = {
   move: string;
   from_square: string;
@@ -47,7 +49,7 @@ export default function Game({ settings, onExit }: Props) {
     setThinking(true);
     setError(null);
     try {
-      const response = await fetch("/api/move", {
+      const response = await fetch(`${API_BASE_URL}/api/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fen: game.fen(), depth }),
