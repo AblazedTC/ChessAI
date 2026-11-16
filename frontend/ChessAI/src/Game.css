@@ -1,0 +1,26 @@
+.game-actions {
+  --text: #f0d9b5;
+  --walnut: #3b2f26;
+  --walnut-hover: #4d3e32;
+  --sand: #f0d9b5;
+  --line: #5a4a3c;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.game-btn {
+  font: inherit;
+  padding: 0.7rem 1.1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  background: var(--walnut);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.game-btn:hover:not(:disabled) { background: var(--walnut-hover); border-color: var(--sand); }
+.game-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.game-btn:focus-visible { outline: 3px solid #b58863; outline-offset: 2px; }
