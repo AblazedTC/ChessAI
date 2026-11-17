@@ -1,4 +1,6 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -16,7 +18,22 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+# Transient upstream failures (rate limiting, overload, timeouts) are retried
+# with a short backoff instead of failing the move immediately.
+ENGINE_ATTEMPTS = 3
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # One shared client so concurrent players reuse connections to the engine
+    app.state.http = httpx.AsyncClient(timeout=15)
+    yield
+    await app.state.http.aclose()
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="ChessAI API",
     description="Backend API for ChessAI.",
     version="0.2.0",
@@ -46,11 +63,18 @@ class MoveResponse(BaseModel):
     eval: float | None = None
 
 
-async def fetch_engine_move(fen: str, depth: int) -> dict:
-    async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.post(CHESS_API_URL, json={"fen": fen, "depth": depth})
-        response.raise_for_status()
-        return response.json()
+async def fetch_engine_move(client: httpx.AsyncClient, fen: str, depth: int) -> dict:
+    for attempt in range(ENGINE_ATTEMPTS):
+        try:
+            response = await client.post(CHESS_API_URL, json={"fen": fen, "depth": depth})
+            response.raise_for_status()
+            return response.json()
+        except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            retryable = isinstance(exc, httpx.TransportError) or exc.response.status_code in RETRYABLE_STATUS
+            if not retryable or attempt == ENGINE_ATTEMPTS - 1:
+                raise
+            await asyncio.sleep(0.5 * 2**attempt)
+    raise RuntimeError("unreachable")
 
 
 @app.get("/")
@@ -66,13 +90,14 @@ async def health() -> dict[str, str]:
 @app.post("/api/move", response_model=MoveResponse)
 async def best_move(request: MoveRequest) -> MoveResponse:
     try:
-        data = await fetch_engine_move(request.fen, request.depth)
-    except httpx.HTTPError as exc:
+        data = await fetch_engine_move(app.state.http, request.fen, request.depth)
+    except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(status_code=502, detail="Could not reach the chess engine.") from exc
 
-    move = data.get("move") or data.get("lan")
+    move = (data.get("move") or data.get("lan")) if isinstance(data, dict) else None
     if not isinstance(move, str) or len(move) < 4:
-        raise HTTPException(status_code=502, detail=data.get("text") or "The engine did not return a move.")
+        detail = data.get("text") if isinstance(data, dict) else None
+        raise HTTPException(status_code=502, detail=detail or "The engine did not return a move.")
 
     return MoveResponse(
         move=move,

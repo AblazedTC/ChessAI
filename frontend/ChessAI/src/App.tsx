@@ -1,15 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chess } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
 import { customPieces } from "./customPieces";
-
-var AI_DEPTH = 12; // 1-18: higher = stronger but slower
 
 // Backend origin, e.g. "https://chessai-api.onrender.com". Empty in dev so
 // requests go to "/api/..." and are proxied by Vite to the local backend.
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
-type Difficulty = "Easy" | "Normal" | "Hard" | "GM";
+// Engine search depth per difficulty (1-18: higher = stronger but slower)
+const DEPTHS = { Easy: 1, Normal: 6, Hard: 9, GM: 12 } as const;
+type Difficulty = keyof typeof DEPTHS;
+const DIFFICULTIES = Object.keys(DEPTHS) as Difficulty[];
+
+const SAVE_KEY = "chessai-game";
+
+function loadSave(): { fen?: string; difficulty?: Difficulty } {
+  try {
+    return JSON.parse(localStorage.getItem(SAVE_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function createGame(): Chess {
+  const game = new Chess();
+  const { fen } = loadSave();
+  if (fen) {
+    try {
+      game.load(fen);
+    } catch {
+      // ignore a corrupt save and start fresh
+    }
+  }
+  return game;
+}
 
 type EngineMove = {
   move: string;
@@ -29,11 +53,28 @@ function getStatus(game: Chess, thinking: boolean): string {
 
 export default function App() {
   // One Chess object for the whole session; chess.js updates it in place
-  const [game] = useState(() => new Chess());
+  const [game] = useState(createGame);
   const [fen, setFen] = useState(game.fen());
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [difficulty, setDifficulty] = useState<Difficulty>("Normal");
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => {
+    const saved = loadSave().difficulty;
+    return saved && saved in DEPTHS ? saved : "Normal";
+  });
+
+  // Keep the game across refreshes / closing the tab
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ fen, difficulty }));
+    } catch {
+      // storage unavailable (e.g. private mode): game just won't persist
+    }
+  }, [fen, difficulty]);
+
+  // Wake the backend on page load so a cold start doesn't delay the first AI move
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/health`).catch(() => {});
+  }, []);
 
   async function playAiMove() {
     setThinking(true);
@@ -42,7 +83,8 @@ export default function App() {
       const response = await fetch(`${API_BASE_URL}/api/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen: game.fen(), depth: AI_DEPTH }),
+        body: JSON.stringify({ fen: game.fen(), depth: DEPTHS[difficulty] }),
+        signal: AbortSignal.timeout(60_000),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -56,7 +98,11 @@ export default function App() {
       });
       setFen(game.fen());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The AI move failed.");
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        setError("The chess engine took too long to respond.");
+      } else {
+        setError(err instanceof Error ? err.message : "The AI move failed.");
+      }
     } finally {
       setThinking(false);
     }
@@ -84,24 +130,7 @@ export default function App() {
   }
 
   function changeDifficulty() {
-    switch (difficulty) {
-      case "Easy":
-        setDifficulty("Normal");
-        AI_DEPTH = 6;
-        break;
-      case "Normal":
-        setDifficulty("Hard");
-        AI_DEPTH = 9;
-        break;
-      case "Hard":
-        setDifficulty("GM");
-        AI_DEPTH = 12;
-        break;
-      case "GM":
-        setDifficulty("Easy");
-        AI_DEPTH = 1;
-        break;
-    }
+    setDifficulty(DIFFICULTIES[(DIFFICULTIES.indexOf(difficulty) + 1) % DIFFICULTIES.length]);
   }
 
   const aiStuck = !thinking && game.turn() === "b" && !game.isGameOver();
@@ -125,7 +154,9 @@ export default function App() {
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
         <button onClick={newGame} disabled={thinking}>New game</button>
-        <button id={"difficulty-button"} onClick={changeDifficulty}>{difficulty}</button>
+        <button id={"difficulty-button"} onClick={changeDifficulty} title="Click to change AI difficulty">
+          AI: {difficulty} (depth {DEPTHS[difficulty]})
+        </button>
         {aiStuck && <button onClick={() => void playAiMove()}>Retry AI move</button>}
       </div>
     </div>
