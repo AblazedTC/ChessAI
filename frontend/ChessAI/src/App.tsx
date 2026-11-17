@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Chess } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
 import { customPieces } from "./customPieces";
+import { getBestMove, loadEngine, type UciMove } from "./engine";
 
 // Backend origin, e.g. "https://chessai-api.onrender.com". Empty in dev so
 // requests go to "/api/..." and are proxied by Vite to the local backend.
@@ -35,12 +36,28 @@ function createGame(): Chess {
   return game;
 }
 
-type EngineMove = {
+type ApiMove = {
   move: string;
   from_square: string;
   to_square: string;
   promotion: string | null;
 };
+
+// Fallback when the in-browser engine can't run: ask the backend (chess-api.com)
+async function getBackendMove(fen: string, depth: number): Promise<UciMove> {
+  const response = await fetch(`${API_BASE_URL}/api/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fen, depth }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail ?? `Server error ${response.status}`);
+  }
+  const data: ApiMove = await response.json();
+  return { from: data.from_square, to: data.to_square, promotion: data.promotion ?? undefined };
+}
 
 function getStatus(game: Chess, thinking: boolean): string {
   if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate — the AI wins." : "Checkmate — you win!";
@@ -71,31 +88,28 @@ export default function App() {
     }
   }, [fen, difficulty]);
 
-  // Wake the backend on page load so a cold start doesn't delay the first AI move
+  // Start loading the in-browser engine right away so the first AI move is quick
   useEffect(() => {
-    fetch(`${API_BASE_URL}/health`).catch(() => {});
+    loadEngine().catch(() => {
+      // Engine unavailable: wake the backend so the fallback is ready
+      fetch(`${API_BASE_URL}/health`).catch(() => {});
+    });
   }, []);
 
   async function playAiMove() {
     setThinking(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen: game.fen(), depth: DEPTHS[difficulty] }),
-        signal: AbortSignal.timeout(60_000),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Server error ${response.status}`);
+      const fen = game.fen();
+      const depth = DEPTHS[difficulty];
+      let move: UciMove;
+      try {
+        move = await getBestMove(fen, depth);
+      } catch (err) {
+        console.warn("In-browser engine failed, using backend:", err);
+        move = await getBackendMove(fen, depth);
       }
-      const data: EngineMove = await response.json();
-      game.move({
-        from: data.from_square,
-        to: data.to_square,
-        promotion: data.promotion ?? undefined,
-      });
+      game.move(move);
       setFen(game.fen());
     } catch (err) {
       if (err instanceof DOMException && err.name === "TimeoutError") {

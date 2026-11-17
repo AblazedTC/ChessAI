@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# copied from node_modules/stockfish by scripts/copy-engine.mjs
+public/stockfish
 *.local
 
 # Editor directories and files
